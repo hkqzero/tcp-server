@@ -50,7 +50,7 @@ int Work(int sockfd, struct sockaddr* pcliaddr, socklen_t clilen)
 			return -1;
 		}
 		
-		printf("===%s===", mesg);
+		printf("recv: %s", mesg);
 
 		n = sendto(sockfd, mesg, n, 0, pcliaddr, clilen);
 		if (n < 0)
@@ -58,6 +58,7 @@ int Work(int sockfd, struct sockaddr* pcliaddr, socklen_t clilen)
 			printf("sendto error\n");
 			return -1;
 		}
+		memset(mesg, 0, strlen(mesg));
 	}	
 	
 	return 0;

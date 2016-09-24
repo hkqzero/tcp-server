@@ -32,13 +32,15 @@ int main()
 	return 0;
 }
 
-int Work(FILE* fp, int sockfd, struct sockaddr* pcliaddr, socklen_t clilen)
+int Work(FILE* fp, int sockfd, struct sockaddr* pservaddr, socklen_t servaddrlen)
 {
 	char send[MAXLINE], recv[MAXLINE];
 
 	while(fgets(send, MAXLINE, fp) != NULL)
 	{
-		int n = sendto(sockfd, send, strlen(send), 0, pcliaddr, clilen);
+		printf("send: %s", send);
+
+		int n = sendto(sockfd, send, strlen(send), 0, pservaddr, servaddrlen);
 		if (n < 0)
 		{
 			printf("sendto error\n");
@@ -52,10 +54,10 @@ int Work(FILE* fp, int sockfd, struct sockaddr* pcliaddr, socklen_t clilen)
                         return -1;
                 }
 
-                printf("===%s====%s===", send, recv);
+                printf("recv: %s", recv);
+		memset(send, 0, strlen(send));
+		memset(recv, 0, strlen(recv));
 	}	
 	
 	return 0;
 }
-
-

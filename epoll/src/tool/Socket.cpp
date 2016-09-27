@@ -9,8 +9,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "sknet.h"
-#include "screen.h"
+#include "Socket.h"
 
 /* Only works in block mode */
 int sk_set_rcv_timeout(int fd, int tv_sec, int tv_usec)
@@ -269,7 +268,7 @@ int sk_check_so_error(int fd)
 	}
 
 	if (error != 0) {
-		SCREEN(SCREEN_RED, stderr, "getsockopt(2): %s\n", strerror(error));
+		//SCREEN(SCREEN_RED, stderr, "getsockopt(2): %s\n", strerror(error));
 		return error;
 	}
 	return 0;

@@ -1,7 +1,7 @@
-INC = -I./include
+INC = -I./include -I./src/tool/ -I./src/tool/log/
 LNKDIR = -L./lib
 LNK = 
-SRC = ./src/*.cpp 
+SRC = ./src/*.cpp ./src/tool/*.cpp ./src/tool/log/*.cpp
 
 CC    = g++
 CFLAG = -g -O3 -ggdb -Wall -Wno-deprecated  

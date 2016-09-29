@@ -11,6 +11,7 @@
 #include <time.h>
 
 #include <stack>
+#include <string>
 #include <iostream>
 
 #include <errno.h>
@@ -22,8 +23,10 @@
 #include "Socket.h"
 #include "log_interface.h"
 
+using namespace std;
+
 #define SERV_PORT 9999
-#define MAXLINE 1024
+#define MAXLINE 10
 
 //init
 int init();
@@ -39,15 +42,16 @@ int main(int argc, char* argv[])
 
 	int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
 	printf("sock_fd: %d\n", sock_fd);
+
 	sk_set_nonblock(sock_fd);
 	sk_resue_addr(sock_fd);
 
 	if (sk_bind_listen(sock_fd, SERV_PORT) != 0) 
 	{
-		//SCREEN(SCREEN_RED, stderr, "bind(2): %s\n", strerror(errno));
+		printf("bind(2): %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-	
+
 	EpollManager epoll_manager;
 	ret = epoll_manager.EpollCreate();
 	if (ret < 0)
@@ -55,39 +59,42 @@ int main(int argc, char* argv[])
 		printf("EpollCreate error\n");
 		return -1;
 	}
-	ret = epoll_manager.EpollCtlAdd(sock_fd, EPOLLIN|EPOLLET);
+	ret = epoll_manager.EpollCtlAdd(sock_fd, EPOLLIN);
 	if (ret < 0)
 	{
 		printf("EpollCtlAdd error\n");
 		return -1;
 	}
 
-	socklen_t clilen;
-	struct sockaddr_in clientaddr;
-
 	for ( ; ; ) 
 	{
 		int nfds = epoll_manager.EpollWait();
+		printf("å°±ç»ªäº‹ä»¶æ•°: %d\n", nfds);
 		struct epoll_event* events = epoll_manager.EpollEvents();
-		
-		for (int i=0; i < nfds; ++i)
+
+		for (int i = 0; i < nfds; ++i)
 		{
 			int sfd = events[i].data.fd;
 			printf("sfd: %d\n", sfd);
-			if (sfd == sock_fd)//Èç¹ûÐÂ¼à²âµ½Ò»¸öSOCKETÓÃ»§Á¬½Óµ½ÁË°ó¶¨µÄSOCKET¶Ë¿Ú£¬½¨Á¢ÐÂµÄÁ¬½Ó¡£
+			if (sfd == sock_fd)//å¦‚æžœæ–°ç›‘æµ‹åˆ°ä¸€ä¸ªSOCKETç”¨æˆ·è¿žæŽ¥åˆ°äº†ç»‘å®šçš„SOCKETç«¯å£ï¼Œå»ºç«‹æ–°çš„è¿žæŽ¥ã€‚
 			{
+				socklen_t clilen;
+				struct sockaddr_in clientaddr;
 				int conn_fd = accept(sock_fd, (sockaddr *)&clientaddr, &clilen);
 				if (conn_fd < 0)
 				{
-					perror("conn_fd<0");
+					printf("conn_fd<0\n");
 					return -1;
 				}
-				//setnonblocking(conn_fd);
+				if (sk_set_nonblock(conn_fd) < 0)
+				{
+					printf("conn_fd sk_set_nonblock error\n");
+				}
 
 				char *str = inet_ntoa(clientaddr.sin_addr);
 				printf("accapt a connection from %s\n", str);
-			
-				//ÉèÖÃÓÃÓÚ¶Á²Ù×÷µÄÎÄ¼þÃèÊö·û
+
+				//è®¾ç½®ç”¨äºŽè¯»æ“ä½œçš„æ–‡ä»¶æè¿°ç¬¦
 				ret = epoll_manager.EpollCtlAdd(conn_fd, EPOLLIN | EPOLLET);
 				if (ret < 0)
 				{
@@ -95,71 +102,66 @@ int main(int argc, char* argv[])
 					return -1;
 				}
 			}
-			else if (sfd & EPOLLIN)//Èç¹ûÊÇÒÑ¾­Á¬½ÓµÄÓÃ»§£¬²¢ÇÒÊÕµ½Êý¾Ý£¬ÄÇÃ´½øÐÐ¶ÁÈë¡£
+			else if (events[i].events & EPOLLIN)//å¦‚æžœæ˜¯å·²ç»è¿žæŽ¥çš„ç”¨æˆ·ï¼Œå¹¶ä¸”æ”¶åˆ°æ•°æ®ï¼Œé‚£ä¹ˆè¿›è¡Œè¯»å…¥ã€‚
 			{
 				printf("epollin, sfd: %d\n", sfd);
 				if (sfd < 0)
 				{
 					continue;
 				}
-				
-				char line[MAXLINE];
-				char* head = line;
-				int recvNum = 0;
-				int count = 0;
+
 				bool bReadOk = false;
+				string sInput;
 				while (true)
 				{
-					recvNum = recv(sfd, head + count, MAXLINE, 0);
-					if (recvNum < 0)
+					char line[MAXLINE];
+
+					int iRecvNum = recv(sfd, line, MAXLINE, 0);
+					if (iRecvNum < 0)
 					{
-						if (errno == EAGAIN)
+						if (errno == EINTR)
 						{
+							printf("EINTR\n");
+							continue;
+						}
+						else if (errno == EWOULDBLOCK || errno == EAGAIN)
+						{
+							printf("EWOULDBLOCK or EAGAIN\n");
 							bReadOk = true;
 							break;
-						}
-						else if (errno == ECONNRESET)
-						{
-							close(sfd);
-							events[i].data.fd = -1;
-							printf("ECONNRESET\n");
-							break;
-						}
-						else if (errno == EINTR)
-						{
-							continue;
 						}
 						else
 						{
 							close(sfd);
-							events[i].data.fd = -1;
-							printf("other\n");
+							printf("other error\n");
 							break;
 						}
 					}
-					else if (recvNum == 0)
+					else if (iRecvNum == 0)
 					{
+						printf("client close request\n");
 						close(sfd);
-						events[i].data.fd = -1;
-						printf("recvNum ok\n");
 						break;
 					}
-					count += recvNum;
-					if (recvNum == MAXLINE)
+					else
 					{
-						continue;
-					}
-					else 
-					{
-						bReadOk = true;
-						break;
+						if (iRecvNum == MAXLINE)
+						{
+							sInput.append(line);
+							continue;
+						}
+						else 
+						{
+							sInput.append(line);
+							bReadOk = true;
+							break;
+						}
 					}
 				}
 
 				if (bReadOk == true)
 				{
-					line[count] = '\0';
-					printf("read from client: %s\n", line);
+					printf("read from client: %s\n", sInput.c_str());
 
 					ret = epoll_manager.EpollCtlMod(sfd, EPOLLOUT|EPOLLET);
 					if (ret < 0)
@@ -169,70 +171,66 @@ int main(int argc, char* argv[])
 					}
 				}
 			}
-			else if (sfd & EPOLLOUT) // Èç¹ûÓÐÊý¾Ý·¢ËÍ
+			else if (events[i].events & EPOLLOUT) // å¦‚æžœæœ‰æ•°æ®å‘é€
 			{
 				const char str[] = "hello from epoll : this is a long string which may be cut by the net\n";
-				
+
 				char line[MAXLINE];
 				memcpy(line, str, sizeof(str));
 				printf("write line: %s\n", line);
-				
+
 				bool bWritten = false;
 				int writenLen = 0;
-				int count = 0;
 				char* head = line;
-
 				while (1)
 				{
-					writenLen = send(sfd, head + count, MAXLINE, 0);
-					if (writenLen == -1)
+					writenLen = send(sfd, head, MAXLINE, 0);
+					printf("writenLen: %d\n", writenLen);
+					if (writenLen < 0)
 					{
-						if (errno == EAGAIN)
+						if (errno == EINTR)
 						{
+							printf("EINTR\n");
+							continue;
+						}
+						else if (errno == EWOULDBLOCK || errno == EAGAIN)
+						{
+							printf("[send]EWOULDBLOCK or EAGAINs\n");
 							bWritten = true;
 							break;
-						}
-						else if (errno == ECONNRESET)
-						{
-							close(sfd);
-							events[i].data.fd = -1;
-							printf("ECONNRESET\n");
-							break;
-						}
-						else if (errno == EINTR)
-						{
-							continue;
 						}
 						else
 						{
 							close(sfd);
-							events[i].data.fd = -1;
-							printf("other\n");
+							printf("other error\n");
 							break;
 						}
 					}
-					
-					if (writenLen == 0)
+					else if (writenLen == 0)
 					{
 						close(sfd);
-						events[i].data.fd = -1;
+						bWritten = true;
 						printf("writenLen ok\n");
 						break;
 					}
-					count += writenLen;
-					if (writenLen == MAXLINE)
+					else
 					{
-						continue;
-					}
-					else 
-					{
-						bWritten = true;
-						break;
+						if (writenLen == MAXLINE)
+						{
+							head += writenLen;
+							continue;
+						}
+						else 
+						{
+							bWritten = true;
+							break;
+						}
 					}
 				}
+
 				if (bWritten == true)
 				{
-					ret = epoll_manager.EpollCtlMod(sfd, EPOLLIN|EPOLLET);
+					ret = epoll_manager.EpollCtlMod(sfd, EPOLLIN | EPOLLET);
 					if (ret < 0)
 					{
 						printf("EpollCtlMod error: %d\n", sfd);

@@ -65,5 +65,5 @@ int EpollManager::EpollCtlMod(int fd, uint32_t events)
 
 int EpollManager::EpollWait()
 {
-	return epoll_wait(epfd_, events_, EVENTS_SIZE, 5000);	
+	return epoll_wait(epfd_, events_, EVENTS_SIZE, -1);	
 }

@@ -52,14 +52,14 @@ int main(int argc, char* argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	for (int i = 0; i < 3; ++i)
-	{
-		pid_t pid = fork();
-		if (pid > 0)
-		{
-			continue;
-		}
-	}
+	//for (int i = 0; i < 3; ++i)
+	//{
+	//	pid_t pid = fork();
+	//	if (pid > 0)
+	//	{
+	//		continue;
+	//	}
+	//}
 
 	EpollManager epoll_manager;
 	ret = epoll_manager.EpollCreate();
@@ -182,7 +182,7 @@ int main(int argc, char* argv[])
 			}
 			else if (events[i].events & EPOLLOUT) // 如果有数据发送
 			{
-				char sendContent[] = "hello from epoll : this is a long string which may be cut by the net\n";
+				char sendContent[] = "HTTP/1.0 200 OK\r\nServer: jdbhttpd/0.1.0\r\nContent-Type: text/html\r\n\r\n";
 
 				//send完成标志位
 				bool bWritten = false;

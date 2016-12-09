@@ -170,9 +170,8 @@ int main(int argc, char* argv[])
 				if (bReadOk == true)
 				{
 					DEBUG_FLOWLOG("recv: %d, read from client: %s", sInput.length(), sInput.c_str());
-					printf("read from client: %s\n", sInput.c_str());
 
-					ret = epoll_manager.EpollCtlMod(sfd, EPOLLOUT|EPOLLET);
+					ret = epoll_manager.EpollCtlMod(sfd, EPOLLOUT | EPOLLET);
 					if (ret < 0)
 					{
 						DEBUG_FLOWLOG("EpollCtlAdd error: %d", sfd);
